@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactJson from 'react-json-view';
 
 async function createBreakdown(movieSet: any[], keys: string[]) {
   return new Promise(accept => {
@@ -55,5 +56,5 @@ export const Breakdown: React.FC<BreakdownProps> = props => {
     return <div>Processing Breakdown ...</div>;
   }
 
-  return <pre>{JSON.stringify(processed, null, 2)}</pre>;
+  return <ReactJson src={processed} theme="monokai" />;
 };
