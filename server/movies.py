@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+from os.path import exists
+
 from ast import literal_eval
 from sklearn.metrics.pairwise import linear_kernel, cosine_similarity
 from nltk.stem.snowball import SnowballStemmer
@@ -128,7 +130,11 @@ def loadMovies():
 
 
 def loadRatings():
-    ratings = pd.read_csv('./the-movies-dataset/ratings_small.csv')
+    if exists('./the-movies-dataset/ratings_modified.csv'):
+        ratings = pd.read_csv('./the-movies-dataset/ratings_modified.csv')
+    else:
+        ratings = pd.read_csv('./the-movies-dataset/ratings_small.csv')
+
     return ratings
 
 

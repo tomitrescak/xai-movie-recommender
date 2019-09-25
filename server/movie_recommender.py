@@ -15,6 +15,7 @@ from nltk.stem.wordnet import WordNetLemmatizer
 from nltk.corpus import wordnet
 from surprise import Reader, Dataset, SVD, evaluate
 import pickle
+from threading import Thread
 
 from movies import loadSmd, loadIndices, loadCosine, loadMovies, loadIndicesMap, loadRatings
 
@@ -101,21 +102,83 @@ def similarTitles(title, number, quantile=0.8):
 # print(improved_recommendations('Pulp Fiction'))
 
 svd = None
+processingSvd = False
+requestProcessSvd = False
+latestData = 0
 
 
-def loadSavedSvd(id):
+def getLatestData():
+    global latestData
+    return {
+        'version': latestData,
+        'processing': processingSvd
+    }
+
+def loadSavedSvd(some):
     try:
         return pickle.load(open('./cache/svd.pickle', 'rb'))
     except:
         return None
 
 
-def initSvd():
+def rate(userId, movieId, rating):
+    # find existing rating
+    global ratings
+    records = ratings.index[(ratings['userId'] == userId) & (
+        ratings['movieId'] == movieId)].tolist()
+
+    # remove existing records
+    if (len(records) != 0):
+        ratings = ratings.drop(records, axis=0)
+
+    if (rating > 0):
+        ratings = ratings.append({
+            'userId': userId,
+            'movieId': movieId,
+            'rating': rating
+        }, ignore_index=True)
+
+    # save ratings
+    ratings.to_csv('./the-movies-dataset/ratings_modified.csv');
+
+    # we need to recalculate ratings
+    thread = Thread(target=processSvd)
+    thread.start()
+
+
+def userRatings(userId):
+    records = ratings[ratings['userId'] == userId]
+    #selected = smd[smd['id'].isin(ratings['movieId'])]
+    # records = records.merge(smd, left_on='movieId', right_on='id')
+    records = records.merge(
+        smd[['id', 'title', 'poster_path']], left_on='movieId', right_on='id')
+    return records
+
+
+def processSvd():
+    global processingSvd, requestProcessSvd, latestData
+    if (processingSvd):
+        requestProcessSvd = True
+        return
+    requestProcessSvd = False
+    processingSvd = True
+
+    initSvd(False)
+
+    processingSvd = False
+    latestData = latestData + 1
+
+    # restart process if necessary
+    if requestProcessSvd:
+        processSvd()
+
+
+def initSvd(useCache=True):
     global svd
-    if (svd != None):
+    if (useCache and svd != None):
         return svd
     svd = loadSavedSvd(0)
-    if (svd != None):
+    if (useCache and svd != None):
         return svd
     #%%
     # surprise reader API to read the dataset

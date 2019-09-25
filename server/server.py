@@ -4,7 +4,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 
-from movie_recommender import top, similarTitles, titlesByUser
+from movie_recommender import top, getLatestData, similarTitles, titlesByUser, rate, userRatings
+
 
 type_defs = """
     type Hello {
@@ -26,6 +27,7 @@ type_defs = """
         original_language: String
         original_title: String
         overview: String
+        poster_path: String
         producer: [String]
         production_countries: [String]
         release_date: String
@@ -56,11 +58,24 @@ type_defs = """
         e_producer: [BreakDownItem]
         cast_top_5: [BreakDownItem]
     }
+    type Rating {
+        id: Int
+        rating: Float
+        title: String
+        poster_path: String
+    }
+    type ProcessingInfo {
+        version: Int
+        processing: Boolean
+    }
     type Query {
         hello: Hello
         top(number: Int, quantile: Float): [Movie]
         similarTitles(title: String, number: Int, quantile: Float): [Movie]
         userTitles(userId: Int, title: String, number: Int): [Movie]
+        userRatings(email: String): [Rating]
+        rate(email: String, movieId: Int, rating: Int): Boolean
+        latestData: ProcessingInfo
     }
 """
 
@@ -75,6 +90,42 @@ def resolve_hello(_, info):
         "message": "Hello, %s!" % user_agent,
         "other": "yess"
     }
+
+users = {
+    "tomi": 200
+}
+id = 0
+
+def findUser(email):
+    global users, id
+    if (email in users):
+        return users[email]
+
+    id = id + 1
+    userId = 1000000 + id
+    users[email] = userId
+
+    return userId
+
+@query.field("userRatings")
+def resolve_userRatings(*_, email):
+    userId = findUser(email)
+    ratings = userRatings(userId)
+
+    ratings = ratings.T.to_dict()
+    ratings = ratings.values()
+
+    return ratings;
+
+@query.field("latestData")
+def resolve_latestData(*_):
+    return getLatestData()
+
+@query.field("rate")
+def resolve_userRatings(*_, email, movieId, rating):
+    userId = findUser(email)
+    rate(userId, movieId, rating)
+    return True
 
 
 @query.field("top")
