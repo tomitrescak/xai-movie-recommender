@@ -84,7 +84,7 @@ def top(n, quantile=0.8):
 # TEST
 # print(top(15, 0.95))
 
-def similarTitles(title, number, quantile=0.8):
+def similarTitles(title, number, quantile=0.9):
     idx = indices[title]
     sim_scores = list(enumerate(cosine_sim[idx]))
     sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
@@ -232,6 +232,29 @@ def predict(svd, userId):
     return fn
 
 
+def userTitles(userId, number):
+    global smd
+    # svd = initSvd()
+    # idx = indices[title]
+    # sim_scores = list(enumerate(cosine_sim[int(idx)]))
+    # sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+    # sim_scores = sim_scores[1:number]
+    # movie_indices = [i[0] for i in sim_scores]
+    # movies = smd.iloc[movie_indices]
+
+    movies = top(number, 0.9)
+
+    prediction = predict(svd, userId)
+    movies['est'] = movies['id'].apply(prediction)
+    movies = movies.sort_values('est', ascending=False)
+
+    return movies.head(number)
+
+
+# initGlobals()
+# print(userTitles(5000, 10).head(10))
+
+
 def titlesByUser(userId, title, number):
     svd = initSvd()
     idx = indices[title]
@@ -248,7 +271,8 @@ def titlesByUser(userId, title, number):
 
 
 #%%
-# print(titlesByUser(5000, 'Avatar', 500).head(10)['soup'])
+# initGlobals()
+# print(titlesByUser(5000, 'Avatar', 500).head(10))
 #%%
 # print(hybrid(5000, 'Avatar')['Titles'])
 

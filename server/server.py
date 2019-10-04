@@ -5,7 +5,7 @@ from flask_cors import CORS
 
 import json
 
-from movie_recommender import initGlobals, top, getLatestData, similarTitles, titlesByUser, rate, userRatings
+from movie_recommender import initGlobals, top, getLatestData, similarTitles, titlesByUser, rate, userRatings, userTitles
 
 
 type_defs = """
@@ -73,7 +73,8 @@ type_defs = """
         hello: Hello
         top(number: Int, quantile: Float): [Movie]
         similarTitles(title: String, number: Int, quantile: Float): [Movie]
-        userTitles(userId: Int, title: String, number: Int): [Movie]
+        similarUserTitles(userId: Int, title: String, number: Int): [Movie]
+        userTitles(email: String, number: Int): [Movie]
         userRatings(email: String): [Rating]
         latestData: ProcessingInfo
     }
@@ -168,10 +169,22 @@ def resolve_similar_titles(*_, title=None, number=20, quantile=0.9):
     return di
 
 
-@query.field("userTitles")
-def resolve_user_titles(*_, userId=None, title=None, number=20):
+@query.field("similarUserTitles")
+def resolve_similar_user_titles(*_, userId=None, title=None, number=20):
     # request = info.context
     pred = titlesByUser(userId, title, number)
+    pred['idx'] = pred['id']
+    di = pred.set_index('idx').T.to_dict()
+    di = di.values()
+
+    return di
+
+
+@query.field("userTitles")
+def resolve_user_titles(*_, email, number=20):
+    userId = findUser(email)
+    # request = info.context
+    pred = userTitles(userId, number)
     pred['idx'] = pred['id']
     di = pred.set_index('idx').T.to_dict()
     di = di.values()
