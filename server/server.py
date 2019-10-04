@@ -1,10 +1,11 @@
-from ariadne import QueryType, graphql_sync, make_executable_schema
+from ariadne import QueryType, MutationType, graphql_sync, make_executable_schema
 from ariadne.constants import PLAYGROUND_HTML
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+import json
 
-from movie_recommender import top, getLatestData, similarTitles, titlesByUser, rate, userRatings
+from movie_recommender import initGlobals, top, getLatestData, similarTitles, titlesByUser, rate, userRatings
 
 
 type_defs = """
@@ -74,12 +75,16 @@ type_defs = """
         similarTitles(title: String, number: Int, quantile: Float): [Movie]
         userTitles(userId: Int, title: String, number: Int): [Movie]
         userRatings(email: String): [Rating]
-        rate(email: String, movieId: Int, rating: Int): Boolean
         latestData: ProcessingInfo
+    }
+
+    type Mutation {
+        rate(email: String, movieId: Int, rating: Int): Rating
     }
 """
 
 query = QueryType()
+mutation = MutationType()
 
 
 @query.field("hello")
@@ -91,10 +96,12 @@ def resolve_hello(_, info):
         "other": "yess"
     }
 
-users = {
-    "tomi": 200
-}
+
+with open('users.json') as json_file:
+    users = json.load(json_file)
+
 id = 0
+
 
 def findUser(email):
     global users, id
@@ -105,7 +112,11 @@ def findUser(email):
     userId = 1000000 + id
     users[email] = userId
 
+    with open('users.json', 'w') as outfile:
+        json.dump(users, outfile, indent=2)
+
     return userId
+
 
 @query.field("userRatings")
 def resolve_userRatings(*_, email):
@@ -115,17 +126,24 @@ def resolve_userRatings(*_, email):
     ratings = ratings.T.to_dict()
     ratings = ratings.values()
 
-    return ratings;
+    print('Ratingsss ...')
+    return ratings
+
 
 @query.field("latestData")
 def resolve_latestData(*_):
     return getLatestData()
 
-@query.field("rate")
+
+@mutation.field("rate")
 def resolve_userRatings(*_, email, movieId, rating):
     userId = findUser(email)
     rate(userId, movieId, rating)
-    return True
+    return {
+        "email": email,
+        "id": movieId,
+        "rating": rating
+    }
 
 
 @query.field("top")
@@ -161,7 +179,7 @@ def resolve_user_titles(*_, userId=None, title=None, number=20):
     return di
 
 
-schema = make_executable_schema(type_defs, query)
+schema = make_executable_schema(type_defs, [query, mutation])
 app = Flask(__name__)
 CORS(app)
 
@@ -195,4 +213,5 @@ def graphql_server():
 
 
 if __name__ == "__main__":
+    initGlobals()
     app.run(debug=True)

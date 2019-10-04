@@ -22,16 +22,28 @@ from movies import loadSmd, loadIndices, loadCosine, loadMovies, loadIndicesMap,
 import warnings
 warnings.simplefilter('ignore')
 
-print('Load smd')
-smd = loadSmd()
-print('Load indices')
-indices = loadIndices(smd)
-print('Load cosine')
-cosine_sim = loadCosine(smd)
-print('Load Indices map')
-indices_map = loadIndicesMap(smd)
-print('Load Ratings')
-ratings = loadRatings()
+smd = None
+indices = None
+cosine_sim = None
+indices_map = None
+ratings = None
+movies = None
+
+
+def initGlobals():
+    global smd, indices, cosine_sim, indices_map, ratings, movies
+    print('Load smd')
+    smd = loadSmd()
+    print('Load indices')
+    indices = loadIndices(smd)
+    print('Load cosine')
+    cosine_sim = loadCosine(smd)
+    print('Load Indices map')
+    indices_map = loadIndicesMap(smd)
+    print('Load Ratings')
+    ratings = loadRatings()
+    print('Load Movies')
+    movies = loadMovies()
 
 #%%
 
@@ -114,6 +126,7 @@ def getLatestData():
         'processing': processingSvd
     }
 
+
 def loadSavedSvd(some):
     try:
         return pickle.load(open('./cache/svd.pickle', 'rb'))
@@ -139,7 +152,7 @@ def rate(userId, movieId, rating):
         }, ignore_index=True)
 
     # save ratings
-    ratings.to_csv('./the-movies-dataset/ratings_modified.csv');
+    ratings.to_csv('./the-movies-dataset/ratings_modified.csv', index=False)
 
     # we need to recalculate ratings
     thread = Thread(target=processSvd)
@@ -147,11 +160,18 @@ def rate(userId, movieId, rating):
 
 
 def userRatings(userId):
+    global movies
     records = ratings[ratings['userId'] == userId]
     #selected = smd[smd['id'].isin(ratings['movieId'])]
     # records = records.merge(smd, left_on='movieId', right_on='id')
+
+    # print('INDIA')
+    # print(movies[movies['id'] == 19404])
+    # print('OTHER')
+    # print(movies[movies['id'] == 278])
+
     records = records.merge(
-        smd[['id', 'title', 'poster_path']], left_on='movieId', right_on='id')
+        movies[['id', 'title', 'poster_path']], left_on='movieId', right_on='id')
     return records
 
 
